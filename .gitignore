@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+data/
+uploads/
+proofs/
+*.log
+*.cmd
+*.vbs

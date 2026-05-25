@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <title>Anexar Minuta</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIINfQiqUSd07ULkR7EVkB7tC1p2uUxLgXY="
+    crossorigin=""
+  />
+  <style>
+    .leaflet-pane,
+    .leaflet-tile,
+    .leaflet-marker-icon,
+    .leaflet-marker-shadow,
+    .leaflet-tile-container,
+    .leaflet-pane > svg,
+    .leaflet-pane > canvas,
+    .leaflet-zoom-box,
+    .leaflet-image-layer,
+    .leaflet-layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+
+    .leaflet-container {
+      overflow: hidden;
+      cursor: grab;
+      touch-action: pan-x pan-y;
+      font-family: inherit;
+      background: #dbeaf2;
+    }
+
+    .leaflet-container img,
+    .leaflet-container video,
+    .leaflet-container canvas {
+      max-width: none !important;
+      max-height: none !important;
+    }
+
+    .leaflet-tile {
+      width: 256px !important;
+      height: 256px !important;
+      user-select: none;
+    }
+
+    :root {
+      --ink: #152033;
+      --muted: #667085;
+      --line: rgba(16, 24, 40, 0.10);
+      --glass: rgba(255, 255, 255, 0.90);
+      --blue: #2563eb;
+      --green: #16a365;
+      --green-soft: #dcf8ea;
+      --green-ink: #055f3d;
+      --yellow: #f7b928;
+      --yellow-soft: #fff4cf;
+      --yellow-ink: #704800;
+      --shadow: 0 24px 70px rgba(16, 24, 40, 0.18);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+
+    body {
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #dbeaf2;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    #map {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #dbeaf2;
+      touch-action: none;
+    }
+
+    .glass {
+      position: fixed;
+      z-index: 500;
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: var(--radius);
+      background: var(--glass);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(22px) saturate(150%);
+    }
+
+    .brand {
+      top: 18px;
+      left: 18px;
+      width: 326px;
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 13px;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      color: white;
+      background: linear-gradient(135deg, #0f172a, #2563eb);
+      box-shadow: 0 14px 28px rgba(37, 99, 235, 0.24);
+      flex: 0 0 auto;
+    }
+
+    .brand-mark svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .brand strong {
+      display: block;
+      font-size: 1rem;
+      line-height: 1.15;
+    }
+
+    .brand span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 750;
+    }
+
+    .upload-panel {
+      top: 96px;
+      left: 18px;
+      width: 420px;
+      padding: 18px;
+    }
+
+    .review-panel {
+      top: 96px;
+      right: 18px;
+      width: 360px;
+      padding: 18px;
+    }
+
+    .flow-panel {
+      left: 460px;
+      right: 400px;
+      bottom: 18px;
+      min-height: 154px;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: minmax(280px, 1fr) 240px;
+      gap: 16px;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .panel-title strong {
+      display: block;
+      font-size: 1rem;
+      line-height: 1.25;
+    }
+
+    .panel-title span,
+    .muted {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.45;
+      font-weight: 650;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 30px;
+      padding: 0 10px;
+      border-radius: 999px;
+      color: var(--green-ink);
+      background: var(--green-soft);
+      font-size: 0.72rem;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .badge::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .dropzone {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 230px;
+      padding: 22px;
+      border: 1.5px dashed rgba(37, 99, 235, 0.34);
+      border-radius: 18px;
+      color: var(--ink);
+      background: rgba(219, 234, 254, 0.48);
+      text-align: center;
+      transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+    }
+
+    .dropzone.dragover {
+      border-color: var(--blue);
+      background: rgba(219, 234, 254, 0.82);
+      transform: translateY(-1px);
+    }
+
+    .dropzone input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .upload-icon {
+      width: 58px;
+      height: 58px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 12px;
+      border-radius: 18px;
+      color: #fff;
+      background: linear-gradient(135deg, #0f172a, #2563eb);
+      box-shadow: 0 16px 32px rgba(37, 99, 235, 0.22);
+    }
+
+    .upload-icon svg {
+      width: 30px;
+      height: 30px;
+    }
+
+    .dropzone strong {
+      display: block;
+      font-size: 1.04rem;
+      line-height: 1.2;
+    }
+
+    .dropzone span {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.45;
+      font-weight: 650;
+    }
+
+    .file-card {
+      display: none;
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .file-card.show {
+      display: block;
+    }
+
+    .file-card strong {
+      display: block;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-card span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+
+    .field-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      color: #475467;
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .field input {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.86);
+      outline: none;
+      padding: 0 12px;
+      font-weight: 850;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .field input[readonly] {
+      pointer-events: none;
+      color: #1d2939;
+      background: rgba(255, 255, 255, 0.64);
+    }
+
+    .status-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .status-item {
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .status-item.done {
+      border-color: rgba(22, 163, 101, 0.26);
+      background: rgba(220, 248, 234, 0.70);
+    }
+
+    .status-item.active {
+      border-color: rgba(37, 99, 235, 0.30);
+      background: rgba(219, 234, 254, 0.78);
+    }
+
+    .status-item.error {
+      border-color: rgba(239, 68, 68, 0.28);
+      background: rgba(254, 226, 226, 0.72);
+    }
+
+    .status-item strong {
+      display: block;
+      font-size: 0.84rem;
+    }
+
+    .status-item span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.74rem;
+      line-height: 1.36;
+      font-weight: 650;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-top: 13px;
+    }
+
+    .btn {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.78);
+      font-weight: 900;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn.primary {
+      border-color: var(--blue);
+      color: #fff;
+      background: var(--blue);
+      box-shadow: 0 12px 24px rgba(37, 99, 235, 0.20);
+    }
+
+    .btn.success {
+      border-color: var(--green);
+      color: #fff;
+      background: var(--green);
+      box-shadow: 0 12px 24px rgba(22, 163, 101, 0.20);
+    }
+
+    .flow-panel h1 {
+      margin: 0;
+      font-size: clamp(1.24rem, 2vw, 1.86rem);
+      line-height: 1.06;
+      letter-spacing: -0.03em;
+    }
+
+    .flow-panel p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+      font-weight: 650;
+    }
+
+    .steps {
+      display: grid;
+      gap: 8px;
+    }
+
+    .step {
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .step span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.66rem;
+      font-weight: 950;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .step strong {
+      display: block;
+      margin-top: 5px;
+      font-size: 0.84rem;
+      line-height: 1.2;
+    }
+
+    .shipment-marker {
+      display: grid;
+      place-items: center;
+      overflow: visible !important;
+      cursor: pointer;
+      pointer-events: auto !important;
+    }
+
+    .shipment-plane {
+      position: relative;
+      width: 72px;
+      height: 72px;
+      display: grid;
+      place-items: center;
+      transform: rotate(var(--heading));
+      transform-origin: center;
+      filter: drop-shadow(0 16px 14px rgba(15, 23, 42, 0.28));
+    }
+
+    .plane-img {
+      position: relative;
+      z-index: 1;
+      width: 58px;
+      height: 58px;
+      display: block;
+      object-fit: contain;
+      pointer-events: none;
+      filter: sepia(1) saturate(6) hue-rotate(var(--plane-hue)) brightness(0.92) contrast(1.1);
+    }
+
+    .plane-fallback {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: hsl(var(--fallback-hue) 78% 46%);
+      font-size: 36px;
+      line-height: 1;
+      transform: rotate(45deg);
+      opacity: 0.82;
+      pointer-events: none;
+    }
+
+    .asset-credit {
+      position: fixed;
+      left: 18px;
+      bottom: 4px;
+      z-index: 450;
+      color: rgba(21, 32, 51, 0.50);
+      font-size: 0.58rem;
+      font-weight: 700;
+      pointer-events: none;
+    }
+
+    @media (max-width: 1100px) {
+      body {
+        overflow: auto;
+      }
+
+      #map {
+        height: 760px;
+      }
+
+      .glass {
+        position: relative;
+        left: auto;
+        right: auto;
+        top: auto;
+        bottom: auto;
+        width: auto;
+        margin: 12px;
+      }
+
+      .flow-panel {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="map" aria-label="Mapa Leaflet"></div>
+
+  <header class="glass brand">
+    <div class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
+        <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+      </svg>
+    </div>
+    <div>
+      <strong>Anexar minuta</strong>
+      <span>Entrada operacional</span>
+    </div>
+  </header>
+
+  <main class="glass upload-panel">
+    <div class="panel-title">
+      <div>
+        <strong>Minuta do envio</strong>
+        <span>Pré-minuta, minuta ou comprovante inicial.</span>
+      </div>
+      <span class="badge">Novo</span>
+    </div>
+
+    <label class="dropzone" id="dropzone">
+      <input id="fileInput" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" />
+      <div>
+        <div class="upload-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <path d="M17 8 12 3 7 8"></path>
+            <path d="M12 3v12"></path>
+          </svg>
+        </div>
+        <strong>Solte a minuta aqui</strong>
+        <span>PDF, JPG ou PNG.</span>
+      </div>
+    </label>
+
+    <div class="file-card" id="fileCard">
+      <strong id="fileName">Arquivo selecionado</strong>
+      <span id="fileMeta">Pronto para processamento</span>
+    </div>
+
+    <div class="actions">
+      <a class="btn" href="index.html">Voltar ao mapa</a>
+      <button class="btn primary" type="button" id="prepareBtn">Cadastrar</button>
+    </div>
+  </main>
+
+  <aside class="glass review-panel">
+    <div class="panel-title">
+      <div>
+        <strong>Dados extraídos</strong>
+        <span>Travados após leitura.</span>
+      </div>
+    </div>
+
+    <div class="field-grid">
+      <div class="field">
+        <label for="trackingPreview">Rastreio</label>
+        <input id="trackingPreview" placeholder="Aguardando leitura" readonly />
+      </div>
+      <div class="field">
+        <label for="flightPreview">Voo / AWB / Código</label>
+        <input id="flightPreview" placeholder="Aguardando leitura" readonly />
+      </div>
+      <div class="field">
+        <label for="franchisePreview">Franquia aérea</label>
+        <input id="franchisePreview" placeholder="Aguardando leitura" readonly />
+      </div>
+    </div>
+
+    <div class="status-list">
+      <div class="status-item" id="stepUploadItem">
+        <strong>Recebimento</strong>
+        <span id="stepUpload">Aguardando arquivo.</span>
+      </div>
+      <div class="status-item" id="stepExtractItem">
+        <strong>Leitura</strong>
+        <span id="stepExtract">Aguardando documento.</span>
+      </div>
+      <div class="status-item" id="stepValidateItem">
+        <strong>Companhia aérea</strong>
+        <span id="stepValidate">Pendente.</span>
+      </div>
+    </div>
+  </aside>
+
+  <section class="glass flow-panel">
+    <div>
+      <span class="badge">Estrutura</span>
+      <h1>Minuta primeiro, radar depois</h1>
+      <p>O mapa só deve mostrar aeronave real quando a minuta trouxer um identificador compatível. Esta tela prepara a entrada oficial para evitar avião aleatório no painel.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><span>Entrada</span><strong>Arquivo da minuta</strong></div>
+      <div class="step"><span>Leitura</span><strong>Rastreio, voo, AWB ou franquia</strong></div>
+      <div class="step"><span>Validação</span><strong>Consulta no site de rastreio aéreo</strong></div>
+    </div>
+  </section>
+
+  <div class="asset-credit">
+    "Airplane" (https://skfb.ly/oPqNw) by gompirulo is licensed under Creative Commons Attribution.
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const dropzone = document.getElementById('dropzone');
+    const fileCard = document.getElementById('fileCard');
+    const fileName = document.getElementById('fileName');
+    const fileMeta = document.getElementById('fileMeta');
+    const stepUploadItem = document.getElementById('stepUploadItem');
+    const stepExtractItem = document.getElementById('stepExtractItem');
+    const stepValidateItem = document.getElementById('stepValidateItem');
+    const stepUpload = document.getElementById('stepUpload');
+    const stepExtract = document.getElementById('stepExtract');
+    const stepValidate = document.getElementById('stepValidate');
+    const prepareBtn = document.getElementById('prepareBtn');
+    const trackingPreview = document.getElementById('trackingPreview');
+    const flightPreview = document.getElementById('flightPreview');
+    const franchisePreview = document.getElementById('franchisePreview');
+    let selectedShipment = null;
+    let shipmentMarker = null;
+    let fittedRouteKey = '';
+    const routeLayer = L.layerGroup();
+    const airports = {
+      GRU: { lat: -23.4356, lon: -46.4731 },
+      JPA: { lat: -7.1458, lon: -34.9486 },
+      VCP: { lat: -23.0074, lon: -47.1345 },
+      BSB: { lat: -15.8697, lon: -47.9208 },
+      GIG: { lat: -22.8099, lon: -43.2505 },
+      CNF: { lat: -19.6244, lon: -43.9719 },
+    };
+
+    const map = L.map('map', {
+      zoomControl: false,
+      preferCanvas: true,
+      worldCopyJump: false,
+      inertia: true,
+      wheelDebounceTime: 80,
+      wheelPxPerZoomLevel: 120,
+      markerZoomAnimation: false,
+    }).setView([-23.4356, -46.4731], 9);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      subdomains: ['a', 'b', 'c'],
+      maxZoom: 19,
+      tileSize: 256,
+      updateWhenZooming: false,
+      keepBuffer: 4,
+      attribution: '&copy; OpenStreetMap',
+    }).addTo(map);
+    routeLayer.addTo(map);
+
+    map.whenReady(() => {
+      map.invalidateSize();
+      setTimeout(() => map.invalidateSize(), 250);
+    });
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    }
+
+    function setStep(item, state) {
+      item.classList.remove('active', 'done', 'error');
+      if (state) item.classList.add(state);
+    }
+
+    function toRad(value) {
+      return value * Math.PI / 180;
+    }
+
+    function toDeg(value) {
+      return value * 180 / Math.PI;
+    }
+
+    function bearingBetween(a, b) {
+      const lat1 = toRad(a[0]);
+      const lat2 = toRad(b[0]);
+      const dLon = toRad(b[1] - a[1]);
+      const y = Math.sin(dLon) * Math.cos(lat2);
+      const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+      return (toDeg(Math.atan2(y, x)) + 360) % 360;
+    }
+
+    function colorSeed(value) {
+      const text = String(value || 'aircraft');
+      let hash = 0;
+      for (let index = 0; index < text.length; index += 1) {
+        hash = ((hash << 5) - hash) + text.charCodeAt(index);
+        hash |= 0;
+      }
+      return Math.abs(hash) % 360;
+    }
+
+    function shipmentIcon(heading, key) {
+      const hue = colorSeed(key);
+      return L.divIcon({
+        className: 'shipment-marker',
+        iconSize: [72, 72],
+        iconAnchor: [36, 36],
+        html: `
+          <div class="shipment-plane" style="--heading:${heading}deg; --plane-hue:${hue}deg; --fallback-hue:${hue};">
+            <span class="plane-fallback" aria-hidden="true">✈</span>
+            <img class="plane-img" src="assets/airplane-model-icon.svg" alt="" onerror="this.style.display='none';this.previousElementSibling.style.display='grid';" />
+          </div>
+        `,
+      });
+    }
+
+    function makeMarkerClickable(marker, onClick) {
+      const wire = () => {
+        const element = marker.getElement();
+        if (!element || element.dataset.clickReady === '1') return;
+        element.dataset.clickReady = '1';
+        element.style.pointerEvents = 'auto';
+        element.style.cursor = 'pointer';
+        element.setAttribute('role', 'button');
+        element.setAttribute('tabindex', '0');
+        L.DomEvent.on(element, 'click', (event) => {
+          L.DomEvent.stop(event);
+          onClick();
+        });
+      };
+      marker.on('click', onClick);
+      marker.on('add', wire);
+      wire();
+      return marker;
+    }
+
+    function drawShipmentPreview(shipment) {
+      const originAirport = airports[shipment.origin_code] || airports.GRU;
+      const destinationAirport = airports[shipment.destination_code] || originAirport;
+      const origin = [originAirport.lat, originAirport.lon];
+      const destination = [destinationAirport.lat, destinationAirport.lon];
+      const heading = bearingBetween(origin, destination);
+      routeLayer.clearLayers();
+      L.polyline([origin, destination], {
+        color: '#2563eb',
+        weight: 4,
+        opacity: 0.80,
+        dashArray: '10 10',
+        lineCap: 'round',
+      }).addTo(routeLayer);
+      const markerKey = shipment.tracking || shipment.id || 'Minuta';
+      const popup = `
+          <strong>${shipment.tracking || 'Minuta'}</strong><br>
+          ${shipment.origin_code || '--'} -> ${shipment.destination_code || '--'}<br>
+          ${shipment.recipient || ''}
+        `;
+      const iconKey = `${markerKey}-${Math.round(heading)}`;
+      if (!shipmentMarker) {
+        shipmentMarker = L.marker(destination, {
+          icon: shipmentIcon(heading, markerKey),
+          zIndexOffset: 620,
+          riseOnHover: true,
+        })
+          .addTo(map)
+          .bindTooltip(markerKey)
+          .bindPopup(popup);
+        shipmentMarker._planeIconKey = iconKey;
+        makeMarkerClickable(shipmentMarker, () => shipmentMarker.openPopup());
+      } else {
+        shipmentMarker.setLatLng(destination);
+        if (shipmentMarker._planeIconKey !== iconKey) {
+          shipmentMarker.setIcon(shipmentIcon(heading, markerKey));
+          shipmentMarker._planeIconKey = iconKey;
+        }
+        shipmentMarker.setTooltipContent(markerKey);
+        shipmentMarker.setPopupContent(popup);
+      }
+      const routeKey = `${origin.join(',')}|${destination.join(',')}`;
+      if (fittedRouteKey !== routeKey) {
+        fittedRouteKey = routeKey;
+        map.fitBounds(L.latLngBounds([origin, destination]).pad(0.18), {
+          animate: false,
+          maxZoom: 7,
+          paddingTopLeft: [440, 100],
+          paddingBottomRight: [380, 180],
+        });
+      }
+      setTimeout(() => map.invalidateSize(), 120);
+    }
+
+    function fillShipment(shipment) {
+      selectedShipment = shipment;
+      trackingPreview.value = shipment.tracking || '';
+      flightPreview.value = shipment.fr24_url || (shipment.manifest_code && shipment.fr24_id ? `${shipment.manifest_code}/${shipment.fr24_id}` : shipment.manifest_code || shipment.carrier || '');
+      franchisePreview.value = `${shipment.destination_code || ''} - ${shipment.destination_name || ''}`.trim();
+      stepUpload.textContent = 'Minuta recebida e salva no cadastro.';
+      stepExtract.textContent = `${shipment.origin_code || '--'} -> ${shipment.destination_code || '--'} · ${shipment.cargo_type || 'carga'}.`;
+      stepValidate.textContent = 'Referência pendente.';
+      setStep(stepUploadItem, 'done');
+      setStep(stepExtractItem, 'done');
+      setStep(stepValidateItem, 'active');
+      prepareBtn.textContent = 'Abrir no mapa';
+      prepareBtn.classList.remove('primary');
+      prepareBtn.classList.add('success');
+      drawShipmentPreview(shipment);
+    }
+
+    async function uploadMinuta(file) {
+      if (!file) return;
+      selectedShipment = null;
+      prepareBtn.textContent = 'Cadastrando...';
+      prepareBtn.classList.add('primary');
+      prepareBtn.classList.remove('success');
+      prepareBtn.disabled = true;
+      stepUpload.textContent = 'Arquivo recebido.';
+      stepExtract.textContent = 'Leitura em andamento.';
+      stepValidate.textContent = 'Pendente.';
+      setStep(stepUploadItem, 'active');
+      setStep(stepExtractItem, 'active');
+      setStep(stepValidateItem, '');
+
+      try {
+        const formData = new FormData();
+        formData.append('minuta', file);
+        const response = await fetch('/api/minutas', {
+          method: 'POST',
+          body: formData,
+          cache: 'no-store',
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Falha ao cadastrar minuta.');
+        fillShipment(payload.shipment);
+      } catch (error) {
+        stepUpload.textContent = 'Arquivo recebido.';
+        stepExtract.textContent = error.message;
+        stepValidate.textContent = 'Revisar arquivo.';
+        setStep(stepUploadItem, 'done');
+        setStep(stepExtractItem, 'error');
+        setStep(stepValidateItem, 'error');
+        prepareBtn.textContent = 'Tentar novamente';
+      } finally {
+        prepareBtn.disabled = false;
+      }
+    }
+
+    function setFile(file) {
+      if (!file) return;
+      fileCard.classList.add('show');
+      fileName.textContent = file.name;
+      fileMeta.textContent = `${formatBytes(file.size)} · ${file.type || 'arquivo local'}`;
+      uploadMinuta(file);
+    }
+
+    async function loadLatestShipmentPreview() {
+      try {
+        const response = await fetch('/api/shipments', { cache: 'no-store' });
+        if (!response.ok) return;
+        const payload = await response.json();
+        const shipment = (payload.shipments || [])[0];
+        if (!shipment) return;
+        trackingPreview.value = shipment.tracking || '';
+        flightPreview.value = shipment.fr24_url || (shipment.manifest_code && shipment.fr24_id ? `${shipment.manifest_code}/${shipment.fr24_id}` : shipment.manifest_code || shipment.carrier || '');
+        franchisePreview.value = `${shipment.destination_code || ''} - ${shipment.destination_name || ''}`.trim();
+        drawShipmentPreview(shipment);
+      } catch {
+      }
+    }
+
+    fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropzone.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach((eventName) => {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropzone.classList.remove('dragover');
+      });
+    });
+
+    dropzone.addEventListener('drop', (event) => {
+      const file = event.dataTransfer.files[0];
+      if (!file) return;
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      fileInput.files = dataTransfer.files;
+      setFile(file);
+    });
+
+    prepareBtn.addEventListener('click', () => {
+      if (selectedShipment) {
+        window.location.href = `index.html?shipment=${encodeURIComponent(selectedShipment.id)}`;
+        return;
+      }
+      const file = fileInput.files[0];
+      if (!file) {
+        stepUpload.textContent = 'Selecione uma minuta antes de cadastrar.';
+        setStep(stepUploadItem, 'error');
+        return;
+      }
+      uploadMinuta(file);
+    });
+
+    loadLatestShipmentPreview();
+  </script>
+</body>
+</html>
